@@ -1,26 +1,44 @@
-# Treino 6× — rotina semanal com animações
+# Treino 6× — app de treino com animações
 
-App em **um único arquivo** (`index.html`) com a rotina de treino de segunda a sábado: divisão
-**Push / Pull / Legs 2× por semana**, focada em **perda de gordura**, com ênfase em **peito, braços e abdômen**
-(sem deixar de treinar o corpo todo).
+App de treino (PWA) com a rotina de segunda a sábado: divisão **Push / Pull / Legs 2× por semana**, focada em
+**perda de gordura**, com ênfase em **peito, braços e abdômen** (sem deixar de treinar o corpo todo).
 
 > Perfil: homem, 19 anos, 86 kg, 1,75 m, intermediário, academia completa, 60 min por treino, cardio misto.
 
-## Como usar
+## O app
 
-1. Abra o `index.html` no navegador (celular ou computador). Não precisa de internet nem de instalação.
-2. Escolha o dia na barra de dias (o dia de hoje já vem selecionado).
-3. Toque em um exercício para ver a **animação grande**, os **músculos trabalhados** (frente e costas),
-   a posição, a execução, a respiração e os erros a evitar. Tem câmera lenta (0,5×) e pausa.
-4. Toque em **Iniciar treino** para entrar no modo treino:
-   - **cronômetro** do treino inteiro (com pausa);
-   - botão **Concluir série** → inicia sozinho o **timer de descanso** (com −15s / +15s / pular, bipe e vibração);
-   - registro de **carga (kg)** por exercício, salvo para a próxima vez;
-   - séries por tempo (prancha), aquecimento e cardio com contagem regressiva (o HIIT avisa cada tiro);
-   - no fim, **Salvar na semana** marca o dia como feito.
-5. O botão **Timer de descanso** (no topo) abre um timer avulso a qualquer momento.
+- **Hoje** — o treino do dia, a semana (dias feitos) e a lista de exercícios.
+- **Plano** — os 7 dias da semana, seu perfil e o guia (calorias, proteína, progressão, recuperação).
+- **Exercícios** — os 39 movimentos animados, com busca e filtro por grupo muscular.
+- **Progresso** — anel da semana, histórico de treinos, cargas anotadas e ajustes (som, vibração, tela ligada).
 
-O progresso fica salvo no próprio navegador (localStorage).
+Cada exercício abre uma tela com a **animação do bonequinho** (músculo principal brilhando, trajetória do
+movimento, fase atual, câmera lenta), o **mapa muscular** frente/costas e as dicas de posição, execução,
+respiração e erros a evitar.
+
+**Iniciar treino** abre o modo treino em tela cheia: cronômetro, "Concluir série" com **timer de descanso**
+automático (−15s / +15s / pular, bipe e vibração), carga em kg salva por exercício, séries por tempo,
+aquecimento e cardio com contagem regressiva (o HIIT avisa cada tiro). Dá para minimizar o treino e continuar
+navegando — ele fica num mini player acima das abas. No fim, **Salvar na semana**.
+
+Navegação de app: abas embaixo, telas que deslizam, gesto de arrastar da borda esquerda para voltar e
+botão voltar do Android.
+
+## Como instalar no celular (tela cheia, funciona offline)
+
+O app precisa estar publicado em um endereço `https://`. O jeito mais simples é o GitHub Pages:
+
+1. No GitHub, abra o repositório → **Settings → Pages**.
+2. Em **Build and deployment**, escolha **Deploy from a branch**, selecione a branch (ex.: `main`) e a pasta `/ (root)` → **Save**.
+3. Em 1–2 minutos o endereço aparece no topo da página (algo como `https://SEU-USUARIO.github.io/Planilha-treino/`).
+4. Abra esse endereço no celular:
+   - **iPhone (Safari):** Compartilhar → **Adicionar à Tela de Início**.
+   - **Android (Chrome):** menu ⋮ → **Instalar app** (ou "Adicionar à tela inicial").
+
+> Repositórios privados só podem usar o GitHub Pages em planos pagos. Se preferir, abra o `index.html`
+> direto no navegador — tudo funciona, só não fica instalável.
+
+O histórico e as cargas ficam salvos no próprio aparelho.
 
 ## A rotina
 
@@ -37,17 +55,21 @@ O progresso fica salvo no próprio navegador (localStorage).
 ## Estrutura do código
 
 ```
-src/rig.js         motor de animação 2D (esqueleto, IK/FK, músculos, equipamentos)
-src/exercises.js   os 39 exercícios: poses-chave, equipamentos e instruções
-src/program.js     a rotina (séries, repetições, descanso, cardio)
-src/bodymap.js     mapa muscular frente/costas (SVG)
-src/app.js         interface, modo treino, cronômetro e timer
-src/styles.css     visual
-build.mjs          junta tudo em index.html
-tools/             pré-visualização das animações e testes automatizados
+index.html            o app pronto (gerado — um arquivo só)
+manifest.webmanifest  dados do app instalável (nome, ícones, tela cheia)
+sw.js                 service worker (funciona offline)
+icons/                ícones do app
+src/rig.js            motor de animação 2D (esqueleto, IK/FK, músculos, equipamentos)
+src/exercises.js      os 39 exercícios: poses-chave, equipamentos e instruções
+src/program.js        a rotina (séries, repetições, descanso, cardio)
+src/bodymap.js        mapa muscular frente/costas (SVG)
+src/app.js            telas, navegação, modo treino, cronômetro e timers
+src/styles.css        visual
+src/index.html        casca do app
+src/icon.svg          ícone
+build.mjs             junta tudo em index.html (`node build.mjs`; `--icons` regera os ícones)
+tools/                pré-visualização das animações e testes automatizados
 ```
-
-Para gerar o `index.html` depois de editar algo em `src/`: `node build.mjs`.
 
 > Plano de referência. Ajuste as cargas para terminar cada série com 1–2 repetições sobrando, pare se sentir dor
 > articular e, se possível, valide com um profissional de educação física e um nutricionista.

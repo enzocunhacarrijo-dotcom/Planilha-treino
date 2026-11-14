@@ -2,121 +2,115 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#F2F4F7">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="description" content="Rotina de treino de 6 dias com animações, cronômetro e timer de descanso.">
-<title>Treino 6× · Rotina semanal</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230B1B3A'/%3E%3Cpath d='M9 16h14M7 12v8M25 12v8M11 13v6M21 13v6' stroke='%235AC8FA' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-title" content="Treino 6×">
+<meta name="application-name" content="Treino 6×">
+<meta name="description" content="App de treino de 6 dias com animações, cronômetro e timer de descanso.">
+<title>Treino 6×</title>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230B1B3A'/%3E%3Cpath d='M11 16h10M8.5 12v8M23.5 12v8M5.5 14v4M26.5 14v4' stroke='%235AC8FA' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
 /*__CSS__*/
 </style>
 </head>
 <body>
-
-<header class="nav">
-  <div class="nav-in">
-    <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Treino 6× <small>· Push / Pull / Legs</small></div>
-    <span class="nav-sp"></span>
-    <button class="pill-btn" id="nav-timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 2.8h5"/></svg>Timer de descanso</button>
+<div class="app" id="app">
+  <div class="views">
+    <div class="view" data-tab="hoje"></div>
+    <div class="view" data-tab="plano" hidden></div>
+    <div class="view" data-tab="exercicios" hidden></div>
+    <div class="view" data-tab="progresso" hidden></div>
   </div>
-</header>
 
-<main>
-  <section class="hero">
-    <div>
-      <div class="eyebrow">Plano de definição · 6 dias por semana</div>
-      <h1>Seu treino.<br><span class="grad">Peito, braços e abdômen.</span></h1>
-      <p class="lead">Divisão Push / Pull / Legs duas vezes por semana: cada músculo treinado 2×, com volume extra para peito, braços e abdômen, e cardio no fim de cada sessão para acelerar a perda de gordura.</p>
-      <div class="chips" id="hero-chips"></div>
-    </div>
-    <aside class="week-card" aria-label="Progresso da semana">
-      <h3>Esta semana</h3>
-      <div class="week-row">
-        <div style="position:relative" id="week-ring"></div>
-        <div>
-          <p id="week-txt"></p>
-          <div class="week-dots" id="week-dots"></div>
-        </div>
-      </div>
-    </aside>
-  </section>
+  <!-- treino em andamento (minimizado) -->
+  <button class="mini" id="mini" aria-label="Voltar ao treino em andamento">
+    <div class="thumb stage"><canvas id="mini-canvas" aria-hidden="true"></canvas></div>
+    <div class="tx"><small>Treino em andamento</small><b id="mini-title"></b></div>
+    <span class="tm tnum" id="mini-time">0:00</span>
+    <span class="go"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.6v12.8c0 .8.9 1.3 1.6.9l10.2-6.4c.6-.4.6-1.4 0-1.8L9.6 4.7C8.9 4.3 8 4.8 8 5.6z"/></svg></span>
+  </button>
 
-  <nav class="days" aria-label="Dias da semana">
-    <div class="days-in" id="days" role="tablist"></div>
+  <!-- barra de abas -->
+  <nav class="tabbar" id="tabbar" role="tablist" aria-label="Seções do app">
+    <button role="tab" data-tab="hoje" aria-selected="true">
+      <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="14" cy="14" r="10" stroke-opacity=".3"/><path class="a" d="M14 4a10 10 0 0 1 9.7 12.4"/><circle cx="14" cy="14" r="5.3" stroke-opacity=".3"/><path class="a" d="M14 8.7a5.3 5.3 0 0 1 4.4 8.3"/></svg>
+      Hoje
+    </button>
+    <button role="tab" data-tab="plano" aria-selected="false">
+      <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="20" height="18" rx="4.5"/><path d="M4 11.5h20M9.5 3.5v4M18.5 3.5v4"/><circle class="af" cx="9.6" cy="17.3" r="1.7" fill="currentColor" stroke="none"/><circle class="af" cx="14" cy="17.3" r="1.7" fill="currentColor" stroke="none"/><circle class="af" cx="18.4" cy="17.3" r="1.7" fill="currentColor" stroke="none"/></svg>
+      Plano
+    </button>
+    <button role="tab" data-tab="exercicios" aria-selected="false">
+      <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14h8M3.5 11.5v5M24.5 11.5v5"/><rect class="a" x="5.8" y="7.5" width="4.2" height="13" rx="1.8"/><rect class="a" x="18" y="7.5" width="4.2" height="13" rx="1.8"/></svg>
+      Exercícios
+    </button>
+    <button role="tab" data-tab="progresso" aria-selected="false">
+      <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 22.5v-6M11.4 22.5V12.5M16.8 22.5V9"/><path class="a" d="M22.2 22.5V5.5"/></svg>
+      Progresso
+    </button>
   </nav>
 
-  <section id="day" class="day" role="tabpanel" aria-live="polite"></section>
-
-  <div class="sec-h" style="margin-top:48px"><h3>Guia rápido</h3><span>para o resultado aparecer</span></div>
-  <section class="guide" id="guide"></section>
-  <p class="disclaimer">Plano de referência para um homem de 19 anos, 86 kg e 1,75 m, sem lesões. Ajuste as cargas para terminar cada série com 1–2 repetições sobrando. Pare se sentir dor articular e, se possível, valide com um profissional de educação física e um nutricionista.</p>
-</main>
-
-<!-- detalhes do exercício -->
-<div class="scrim" id="scrim"></div>
-<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" aria-hidden="true">
-  <div class="sheet-top" id="sheet-top">
-    <div class="grabber" aria-hidden="true"></div>
-    <div class="sheet-h">
-      <h3 id="sheet-title"></h3>
-      <button class="icon-btn" id="sheet-close" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <!-- timer de descanso avulso -->
+  <div class="dock" id="dock" role="timer" aria-hidden="true">
+    <div class="dock-row">
+      <div class="mini-ring"></div>
+      <div class="dock-t"><small id="dock-label">Descanso</small><b class="tnum" id="dock-time">1:00</b></div>
+      <button class="ctl" data-add="-15" aria-label="Menos 15 segundos">−15</button>
+      <button class="ctl" data-add="15" aria-label="Mais 15 segundos">+15</button>
+      <button class="ctl" data-act="close" aria-label="Fechar timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
+    <div class="presets"><button data-s="30">30s</button><button data-s="45">45s</button><button data-s="60">60s</button><button data-s="90">90s</button><button data-s="120">2 min</button></div>
   </div>
-  <div class="sheet-body" id="sheet-body"></div>
-</section>
 
-<!-- timer de descanso flutuante -->
-<div class="dock" id="dock" role="timer" aria-hidden="true">
-  <div class="dock-row">
-    <div class="mini-ring"></div>
-    <div class="dock-t"><small id="dock-label">Descanso</small><b class="tnum" id="dock-time">1:00</b></div>
-    <button class="ctl" data-add="-15" aria-label="Menos 15 segundos">−15</button>
-    <button class="ctl" data-add="15" aria-label="Mais 15 segundos">+15</button>
-    <button class="ctl" data-act="close" aria-label="Fechar timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-  </div>
-  <div class="presets"><button data-s="30">30s</button><button data-s="45">45s</button><button data-s="60">60s</button><button data-s="90">90s</button><button data-s="120">2 min</button></div>
-</div>
-
-<!-- modo treino -->
-<div class="session" id="session" role="dialog" aria-modal="true" aria-label="Modo treino" aria-hidden="true">
-  <div class="s-top">
-    <button class="icon-btn" id="ses-close" aria-label="Minimizar treino"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
-    <div class="s-clock" id="ses-clockwrap"><small id="ses-clocklabel">Tempo de treino</small><b class="tnum" id="ses-clock" role="timer">0:00</b><small id="ses-day" style="color:rgba(255,255,255,.55);letter-spacing:.02em;text-transform:none"></small></div>
-    <button class="icon-btn" id="ses-pause" aria-label="Pausar treino"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg></button>
-  </div>
-  <div class="s-prog" id="ses-prog"></div>
-  <div class="s-main">
-    <div class="stage s-stage">
-      <canvas id="ses-canvas" aria-hidden="true"></canvas>
-      <div class="stage-ui"><div class="phase" aria-live="polite"><span id="ses-phase"></span></div></div>
+  <!-- modo treino -->
+  <div class="session" id="session" role="dialog" aria-modal="true" aria-label="Modo treino" aria-hidden="true">
+    <div class="s-top">
+      <button class="icon-btn" id="ses-close" aria-label="Minimizar treino"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="s-clock" id="ses-clockwrap"><small id="ses-clocklabel">Tempo de treino</small><b class="tnum" id="ses-clock" role="timer">0:00</b><small class="day" id="ses-day"></small></div>
+      <button class="icon-btn" id="ses-pause" aria-label="Pausar treino"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg></button>
     </div>
-    <div class="s-info" id="ses-info"></div>
-  </div>
-  <div class="rest-panel" id="rest" aria-hidden="true">
-    <div class="rest-in">
-      <div class="big-ring" id="rest-ring"></div>
-      <div>
+    <div class="s-prog" id="ses-prog"></div>
+    <div class="s-main">
+      <div class="stage s-stage">
+        <canvas id="ses-canvas" aria-hidden="true"></canvas>
+        <div class="stage-ui"><div class="phase" aria-live="polite"><span id="ses-phase"></span></div></div>
+      </div>
+      <div class="s-info" id="ses-info"></div>
+    </div>
+    <div class="rest-panel" id="rest" aria-hidden="true">
+      <div class="rest-in">
+        <div class="big-ring" id="rest-ring"></div>
         <h4>Descanso</h4>
         <p class="next" id="rest-next"></p>
         <div class="rest-btns"><button data-rest="-15">−15s</button><button data-rest="15">+15s</button><button class="skip" data-rest="skip">Pular</button></div>
       </div>
     </div>
+    <div class="summary" id="summary">
+      <div class="sum-in">
+        <div class="sum-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        <h2 id="sum-title">Treino concluído!</h2>
+        <p id="sum-sub"></p>
+        <div class="sum-stats" id="sum-stats"></div>
+        <button class="main-btn" id="sum-save" style="width:100%">Salvar na semana</button>
+        <button class="main-btn alt" id="sum-discard" style="width:100%;margin-top:10px">Descartar</button>
+      </div>
+    </div>
   </div>
-  <div class="summary" id="summary">
-    <div class="sum-in">
-      <div class="sum-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-      <h2 id="sum-title">Treino concluído!</h2>
-      <p id="sum-sub"></p>
-      <div class="sum-stats" id="sum-stats"></div>
-      <button class="main-btn" id="sum-save" style="width:100%">Salvar na semana</button>
-      <button class="main-btn alt" id="sum-discard" style="width:100%;margin-top:10px">Descartar</button>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="launch" id="launch" aria-hidden="true">
+    <div class="logo">
+      <!--__ICON__-->
+      <b>Treino 6×</b>
     </div>
   </div>
 </div>
-
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="desk-note"><b>Treino 6×</b>No celular, abra o app e toque em “Adicionar à Tela de Início” para instalar e usar em tela cheia.</div>
 
 <script>
 //__JS__
