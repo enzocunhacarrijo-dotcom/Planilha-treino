@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Preview das animações</title>
+<style>
+  body { margin: 0; background: #05080F; color: #cfe; font: 12px -apple-system, system-ui, sans-serif; }
+  .row { display: flex; gap: 6px; padding: 6px; align-items: center; border-bottom: 1px solid #123; }
+  .row h3 { width: 120px; margin: 0; font-size: 11px; }
+  canvas { width: var(--w, 240px); aspect-ratio: 4/3; background: radial-gradient(ellipse at 50% 35%, #15284F 0%, #0A1428 55%, #05080F 100%); border-radius: 8px; }
+</style>
+</head>
+<body>
+<div id="out"></div>
+<script src="../src/rig.js"></script>
+<script src="../src/exercises.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  const only = params.get('ids') ? params.get('ids').split(',') : Rig.all();
+  const ts = (params.get('t') || '0,0.25,0.5,0.75').split(',').map(Number);
+  const out = document.getElementById('out'); if (params.get('w')) document.body.style.setProperty('--w', params.get('w') + 'px');
+  const errors = [];
+  for (const id of only) {
+    const row = document.createElement('div'); row.className = 'row';
+    const h = document.createElement('h3'); h.textContent = id; row.appendChild(h);
+    for (const t of ts) {
+      const c = document.createElement('canvas');
+      row.appendChild(c);
+      try { Rig.renderAt(c, id, t, +(params.get("s") || 1.5)); } catch (e) { errors.push(id + ': ' + e.message); }
+    }
+    out.appendChild(row);
+  }
+  window.__errors = errors;
+</script>
+</body>
+</html>
