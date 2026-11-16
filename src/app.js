@@ -36,16 +36,100 @@
     sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>',
     phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="6.5" y="2.5" width="11" height="19" rx="3"/><path d="M12 7.5v7M9 11.5l3 3 3-3"/></svg>',
     trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></svg>',
+    shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6L12 3z"/><path d="M8.8 12l2.3 2.3 4.3-4.6"/></svg>',
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg>',
+    upl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 19.5h14"/></svg>',
     weight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 12h6M3 10v4M21 10v4"/><rect x="5" y="7" width="4" height="10" rx="1.4"/><rect x="15" y="7" width="4" height="10" rx="1.4"/></svg>'
   };
 
-  /* ---------------- armazenamento ---------------- */
-  const KEY = 'treino6x:v1';
-  let DB;
-  try { DB = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { DB = {}; }
-  DB = Object.assign({ weights: {}, history: [], session: null }, DB);
-  DB.settings = Object.assign({ sound: true, vibe: true, wake: true }, DB.settings || {});
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { /* modo privado */ } };
+  /* ---------------- armazenamento (salvo duas vezes: localStorage + IndexedDB) ---------------- */
+  const Store = (() => {
+    const KEY = 'treino6x:v1';
+    const DBN = 'treino6x', OS = 'kv';
+    let idb = null, warned = false;
+    const st = { persisted: false, idb: false };
+    const readLS = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } };
+    function openIDB() {
+      return new Promise(res => {
+        try {
+          const r = indexedDB.open(DBN, 1);
+          r.onupgradeneeded = () => r.result.createObjectStore(OS);
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => res(null);
+          r.onblocked = () => res(null);
+        } catch (e) { res(null); }
+      });
+    }
+    function idbGet(k) {
+      return new Promise(res => {
+        if (!idb) return res(null);
+        try { const q = idb.transaction(OS, 'readonly').objectStore(OS).get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch (e) { res(null); }
+      });
+    }
+    function idbPut(k, v) { if (!idb) return; try { idb.transaction(OS, 'readwrite').objectStore(OS).put(v, k); } catch (e) { /* ignore */ } }
+    const clone = o => JSON.parse(JSON.stringify(o));
+    const hasData = d => !!d && ((d.history && d.history.length) || (d.weights && Object.keys(d.weights).length) || d.session);
+    return {
+      st,
+      load() { return readLS(); },
+      save(DB) {
+        DB.updatedAt = Date.now();
+        let ok = true;
+        try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { ok = false; }
+        const c = clone(DB);
+        idbPut('db', c);
+        // uma cópia automática por dia (guarda as últimas 7)
+        const day = new Date().toISOString().slice(0, 10);
+        if (hasData(DB) && Store._snapDay !== day) {
+          Store._snapDay = day;
+          idbPut('snap:' + day, c);
+          idbGet('snaps').then(list => {
+            list = (list || []).filter(x => x !== day).concat(day).sort();
+            while (list.length > 7) { const old = list.shift(); try { idb.transaction(OS, 'readwrite').objectStore(OS).delete('snap:' + old); } catch (e) { /* ignore */ } }
+            idbPut('snaps', list);
+          });
+        }
+        if (!ok && !idb && !warned) { warned = true; setTimeout(() => toast('Não foi possível salvar. Saia do modo anônimo do navegador.'), 300); }
+        return ok;
+      },
+      // abre o IndexedDB e recupera dados caso o localStorage tenha sido apagado
+      async init(DB) {
+        idb = await openIDB();
+        st.idb = !!idb;
+        if (!idb) return null;
+        const v = await idbGet('db');
+        let best = null;
+        if (v && (v.updatedAt || 0) > (DB.updatedAt || 0) && hasData(v)) best = v;
+        if (!best && !hasData(DB)) {
+          const list = await idbGet('snaps');
+          if (list && list.length) { const sn = await idbGet('snap:' + list[list.length - 1]); if (hasData(sn)) best = sn; }
+        }
+        if (!best) idbPut('db', clone(DB));
+        return best;
+      },
+      async persist() {
+        try {
+          if (navigator.storage && navigator.storage.persist) {
+            st.persisted = await navigator.storage.persisted() || await navigator.storage.persist();
+          }
+        } catch (e) { /* ignore */ }
+        return st.persisted;
+      }
+    };
+  })();
+
+  function normalizeDB(d) {
+    d = Object.assign({ weights: {}, best: {}, history: [], session: null, lastBackup: 0, updatedAt: 0 }, d || {});
+    d.settings = Object.assign({ sound: true, vibe: true, wake: true }, d.settings || {});
+    if (!Array.isArray(d.history)) d.history = [];
+    d.history = d.history.filter(h => h && typeof h.t === 'number' && typeof h.day === 'string');
+    return d;
+  }
+  let DB = normalizeDB(Store.load());
+  const save = () => Store.save(DB);
+  // salva também ao sair/minimizar o app
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
+  window.addEventListener('pagehide', () => save());
 
   /* ---------------- utilidades ---------------- */
   const todayIdx = () => (new Date().getDay() + 6) % 7; // 0 = segunda
@@ -107,8 +191,8 @@
   /* ---------------- contagem regressiva ---------------- */
   class Countdown {
     constructor(onTick, onDone) { this.onTick = onTick; this.onDone = onDone; this.active = false; this.paused = null; }
-    start(sec) {
-      this.total = sec; this.end = Date.now() + sec * 1000; this.paused = null; this.last = Math.ceil(sec); this.active = true;
+    start(sec, total) {
+      this.total = total || sec; this.end = Date.now() + sec * 1000; this.paused = null; this.last = Math.ceil(sec); this.active = true;
       clearInterval(this.iv); this.iv = setInterval(() => this.step(), 100); this.step();
     }
     remaining() { if (!this.active) return 0; return this.paused != null ? this.paused : Math.max(0, (this.end - Date.now()) / 1000); }
@@ -141,12 +225,13 @@
     const c = parseFloat(fg.getAttribute('stroke-dasharray'));
     fg.setAttribute('stroke-dashoffset', String(c * Math.min(1, Math.max(0, p))));
   }
-  function toast(msg) {
+  function toast(msg, action) {
     const t = $('#toast');
-    t.textContent = msg;
+    t.innerHTML = esc(msg) + (action ? ` <button class="toast-act">${esc(action.label)}</button>` : '');
+    if (action) $('.toast-act', t).addEventListener('click', () => { t.classList.remove('on'); action.fn(); });
     t.classList.add('on');
     clearTimeout(toast.tm);
-    toast.tm = setTimeout(() => t.classList.remove('on'), 2400);
+    toast.tm = setTimeout(() => t.classList.remove('on'), action ? 6500 : 2400);
   }
 
   /* =================================================================
@@ -508,6 +593,16 @@
     return out;
   }
 
+  function loadsHTML(id) {
+    const H = DB.history.filter(h => h.log && h.log[id] && h.log[id].some(v => typeof v === 'number')).slice(-6).reverse();
+    if (!H.length) return '';
+    return `<div class="sh"><h2>Suas cargas</h2>${DB.best[id] ? `<span>recorde ${num(DB.best[id], 1)} kg</span>` : ''}</div>
+      <div class="group">${H.map(h => {
+        const v = h.log[id].filter(x => typeof x === 'number');
+        return `<div class="row"><div class="tx"><div class="t1">${dateShort(new Date(h.t))}</div><div class="t2 tnum">${v.map(x => num(x, 1)).join(' · ')} kg</div></div><span class="val tnum">${num(Math.max(...v), 1)} kg</span></div>`;
+      }).join('')}</div>`;
+  }
+
   function openExercise(id, ctx, backLabel) {
     const ex = Rig.get(id);
     const info = ex.info, pri = ex.pri || [], sec = ex.sec || [];
@@ -535,7 +630,7 @@
       </div>
       <div class="legend-row"><span><i class="lp"></i>Principal</span><span><i class="ls"></i>Auxiliar</span><span><i class="lt2"></i>Trajetória</span></div>
       <div class="x-head"><h1>${ex.name}</h1><div class="mus">${musLine(ex, 8)}</div></div>
-      ${presc}${restBtn}
+      ${presc}${restBtn}${loadsHTML(id)}
       <div class="seg" role="tablist"><i></i><button role="tab" aria-selected="true" data-seg="0">Como fazer</button><button role="tab" aria-selected="false" data-seg="1">Músculos</button></div>
       <div class="panel" data-panel="0">
         <div class="cues">
@@ -645,6 +740,49 @@
   })();
 
   /* =================================================================
+     BACKUP (arquivo .json)
+     ================================================================= */
+  const DAY_MS = 864e5;
+  const relDay = t => { const d = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(t).setHours(0, 0, 0, 0)) / DAY_MS); return d <= 0 ? 'hoje' : d === 1 ? 'ontem' : `há ${d} dias`; };
+  const backupStale = () => DB.history.length > 0 && DB.history.some(h => h.t > (DB.lastBackup || 0)) && Date.now() - (DB.lastBackup || 0) > 7 * DAY_MS;
+  const Backup = {
+    async export() {
+      const payload = { app: 'treino6x', version: 2, exportedAt: new Date().toISOString(), data: { history: DB.history, weights: DB.weights, best: DB.best, settings: DB.settings } };
+      const json = JSON.stringify(payload, null, 1);
+      const name = `treino6x-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      let file = null;
+      try { file = new File([json], name, { type: 'application/json' }); } catch (e) { /* navegador antigo */ }
+      const touch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+      if (file && touch && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: 'Backup Treino 6×' }); this.done(); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      const url = URL.createObjectURL(file || new Blob([json], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      this.done();
+    },
+    done() { DB.lastBackup = Date.now(); save(); refreshAll(); toast('Backup salvo ✓ Guarde o arquivo no Drive, iCloud ou WhatsApp'); },
+    async import(file) {
+      let obj;
+      try { obj = JSON.parse(await file.text()); } catch (e) { toast('Arquivo inválido'); return; }
+      const d = obj && obj.app === 'treino6x' && obj.data;
+      if (!d || !Array.isArray(d.history)) { toast('Este arquivo não é um backup do Treino 6×'); return; }
+      let added = 0;
+      d.history.forEach(h => {
+        if (!h || typeof h.t !== 'number' || typeof h.day !== 'string') return;
+        const id = h.id || h.t;
+        if (!DB.history.some(x => (x.id || x.t) === id)) { DB.history.push(Object.assign({}, h, { id })); added++; }
+      });
+      DB.history.sort((a, b) => a.t - b.t);
+      for (const k in (d.weights || {})) if (DB.weights[k] == null && typeof d.weights[k] === 'number') DB.weights[k] = d.weights[k];
+      for (const k in (d.best || {})) if (typeof d.best[k] === 'number' && d.best[k] > (DB.best[k] || 0)) DB.best[k] = d.best[k];
+      save(); refreshAll();
+      toast(`Backup restaurado · ${added} ${added === 1 ? 'treino adicionado' : 'treinos adicionados'}`);
+    }
+  };
+
+  /* =================================================================
      ABA: PROGRESSO
      ================================================================= */
   let installEvt = null;
@@ -660,6 +798,7 @@
       const loads = Object.entries(DB.weights).filter(([id, v]) => Rig.get(id) && v > 0);
       const set = DB.settings;
       scr.body.innerHTML = `
+        ${backupStale() ? `<button class="banner" data-backup><span class="ic">${I.shield}</span><div class="tx"><b>Faça um backup</b><span>${DB.history.length} ${DB.history.length === 1 ? 'treino salvo' : 'treinos salvos'} só neste aparelho${DB.lastBackup ? ' · último backup ' + relDay(DB.lastBackup) : ''}.</span></div>${I.chevR}</button>` : ''}
         ${ringCard()}
         <div class="sh"><h2>No total</h2></div>
         <div class="tiles t3">
@@ -673,8 +812,15 @@
           return `<div class="row"><span class="badge-day">${d.curto}</span><div class="tx"><div class="t1">${d.titulo}</div><div class="t2 tnum">${dateShort(new Date(h.t))} · ${fmt(h.dur)} · ${h.sets} ${h.sets === 1 ? 'série' : 'séries'}</div></div></div>`;
         }).join('')}</div>` : '<p class="empty" style="margin:6px 24px">Nenhum treino salvo ainda. Termine um treino e toque em “Salvar na semana”.</p>'}
         <div class="sh"><h2>Minhas cargas</h2></div>
-        ${loads.length ? `<div class="group" style="--inset:60px">${loads.map(([id, v]) => `<button class="row" data-ex="${id}"><span class="ic">${I.weight}</span><div class="tx"><div class="t1">${Rig.get(id).name}</div></div><span class="val tnum">${num(v, 1)} kg</span>${I.chevR}</button>`).join('')}</div>`
+        ${loads.length ? `<div class="group" style="--inset:60px">${loads.map(([id, v]) => `<button class="row" data-ex="${id}"><span class="ic">${I.weight}</span><div class="tx"><div class="t1">${Rig.get(id).name}</div>${DB.best[id] ? `<div class="t2">Recorde ${num(DB.best[id], 1)} kg</div>` : ''}</div><span class="val tnum">${num(v, 1)} kg</span>${I.chevR}</button>`).join('')}</div>`
           : '<p class="empty" style="margin:6px 24px">As cargas que você anotar durante o treino aparecem aqui.</p>'}
+        <div class="sh"><h2>Seus dados</h2></div>
+        <div class="group" style="--inset:60px">
+          <div class="row"><span class="ic">${I.shield}</span><div class="tx"><div class="t1">Salvamento automático</div><div class="t2">${Store.st.persisted ? 'Ativo · protegido contra limpeza' : 'Ativo · 2 cópias neste aparelho'}</div></div><span class="done-ic">${I.check}</span></div>
+          <button class="row" data-backup><span class="ic">${I.down}</span><div class="tx"><div class="t1">Fazer backup</div><div class="t2">${DB.lastBackup ? 'Último: ' + relDay(DB.lastBackup) : 'Nenhum backup ainda'}</div></div>${I.chevR}</button>
+          <label class="row tap"><span class="ic">${I.upl}</span><div class="tx"><div class="t1">Restaurar backup</div><div class="t2">Importa um arquivo .json salvo antes</div></div><input type="file" accept=".json,application/json" data-restore hidden>${I.chevR}</label>
+        </div>
+        <p class="note">Tudo é salvo sozinho a cada série, inclusive o treino em andamento — pode fechar o app à vontade. Use o backup para trocar de celular ou caso o navegador seja limpo.</p>
         <div class="sh"><h2>Ajustes</h2></div>
         <div class="group" style="--inset:60px">
           <label class="row"><span class="ic">${I.sound}</span><div class="tx"><div class="t1">Sons do timer</div></div><span class="sw"><input type="checkbox" data-set="sound" ${set.sound ? 'checked' : ''}><span></span></span></label>
@@ -694,6 +840,7 @@
         <p class="note" style="text-align:center;margin-top:18px">Treino 6× · seus dados ficam só neste aparelho.</p>`;
     };
     scr.body.addEventListener('change', e => {
+      if (e.target.matches('[data-restore]')) { const f = e.target.files && e.target.files[0]; if (f) Backup.import(f); e.target.value = ''; return; }
       const k = e.target.dataset.set;
       if (!k) return;
       DB.settings[k] = e.target.checked; save();
@@ -703,10 +850,14 @@
       if (e.target.closest('[data-install]')) {
         if (installEvt) { installEvt.prompt(); try { await installEvt.userChoice; } catch (err) { /* ignore */ } installEvt = null; scr.render(); return; }
         const h = $('.install-help', scr.body); h.hidden = !h.hidden;
+      } else if (e.target.closest('[data-backup]')) {
+        Backup.export();
       } else if (e.target.closest('[data-reset]')) {
         if (!confirm('Apagar todo o histórico de treinos e as cargas anotadas?')) return;
-        DB.history = []; DB.weights = {}; save();
-        refreshAll(); toast('Dados apagados');
+        const snap = JSON.parse(JSON.stringify({ history: DB.history, weights: DB.weights, best: DB.best }));
+        DB.history = []; DB.weights = {}; DB.best = {}; save();
+        refreshAll();
+        toast('Dados apagados', { label: 'Desfazer', fn: () => { Object.assign(DB, snap); save(); refreshAll(); toast('Dados restaurados ✓'); } });
       }
     });
     return scr;
@@ -760,7 +911,7 @@
     function elapsedOf(s) { const now = Date.now(); return (now - s.start - s.pausedMs - (s.pausedAt ? now - s.pausedAt : 0)) / 1000; }
     function update() {
       const s = DB.session;
-      const on = !!s && !Session.isOpen() && !s.finished;
+      const on = !!s && !Session.isOpen() && !s.ended;
       el.classList.toggle('on', on);
       APP.classList.toggle('has-mini', on);
       clearInterval(iv);
@@ -826,11 +977,13 @@
         if (!confirm(`Você tem um treino de ${other ? other.titulo : 'outro dia'} em andamento. Descartar e começar ${day.titulo}?`)) return;
         DB.session = null;
       }
-      if (!DB.session || DB.session.day !== day.id || Date.now() - DB.session.start > 6 * 3600e3) {
-        DB.session = { day: day.id, start: Date.now(), pausedMs: 0, pausedAt: null, i: 0, done: {} };
+      rescue();
+      if (!DB.session || DB.session.day !== day.id || DB.session.ended) {
+        DB.session = { day: day.id, start: Date.now(), pausedMs: 0, pausedAt: null, i: 0, done: {}, log: {} };
         save();
       }
-      S = Object.assign({ steps: buildSteps(day), dayObj: day, seg: 0, timedOn: false }, DB.session);
+      restCd.stop(); timedCd.stop();
+      S = Object.assign({ steps: buildSteps(day), dayObj: day, seg: 0, timedOn: false, log: {}, rest: null, timed: null }, DB.session);
       if (S.pausedAt) { S.pausedMs += Date.now() - S.pausedAt; S.pausedAt = null; }
       syncPauseUI();
       persist();
@@ -848,6 +1001,7 @@
       clockIv = setInterval(tickClock, 250);
       tickClock();
       render();
+      resumeTimers();
       requestWake();
       $('#summary').classList.remove('on');
       history.pushState({ t6s: 1 }, '');
@@ -868,8 +1022,74 @@
 
     function persist() {
       if (!S) return;
-      DB.session = { day: S.day, start: S.start, pausedMs: S.pausedMs, pausedAt: S.pausedAt, i: S.i, done: S.done };
+      DB.session = {
+        day: S.day, start: S.start, pausedMs: S.pausedMs, pausedAt: S.pausedAt, i: S.i, done: S.done,
+        log: S.log, rest: S.rest, timed: S.timed, last: Date.now(), ended: !!S.ended
+      };
       save();
+    }
+
+    // retoma descanso / séries por tempo / cardio que estavam rodando quando o app fechou
+    function resumeTimers() {
+      const now = Date.now();
+      const st = S.steps[S.i];
+      if (S.timed) {
+        const end = S.timed.left != null ? now + S.timed.left * 1000 : S.timed.end;
+        if (st.kind === 'sets') {
+          if (end > now) { S.timed = { end }; S.timedOn = true; timedCd.start((end - now) / 1000, st.e.tempo); render(); }
+          else { S.timed = null; completeSet(); return; }
+        } else {
+          let seg = S.timed.seg || 0, e2 = end;
+          while (e2 <= now && seg < st.segs.length - 1) { seg++; e2 += st.segs[seg].s * 1000; }
+          if (e2 <= now) { S.timed = null; S.timedOn = false; S.done[S.i] = 1; persist(); render(); }
+          else { S.seg = seg; S.timed = { seg, end: e2 }; S.timedOn = true; timedCd.start((e2 - now) / 1000, st.segs[seg].s); render(); }
+        }
+      }
+      if (S.rest) {
+        const end = S.rest.left != null ? now + S.rest.left * 1000 : S.rest.end;
+        if (end > now) showRest((end - now) / 1000, S.rest.next, S.rest.total);
+        else { S.rest = null; persist(); }
+      }
+    }
+
+    // monta o registro do treino para o histórico
+    function entryFromS() {
+      const sets = S.steps.reduce((a, st, i) => a + (st.kind === 'sets' ? Math.min(S.done[i] || 0, st.e.s) : 0), 0);
+      return { id: S.start, t: Date.now(), day: S.day, dur: Math.round(elapsed()), sets, log: S.log || {} };
+    }
+    function upsertHistory(entry) {
+      const k = DB.history.findIndex(h => h.id === entry.id);
+      if (k >= 0) DB.history[k] = entry; else DB.history.push(entry);
+      DB.history.sort((a, b) => a.t - b.t);
+      DB.history = DB.history.slice(-1000);
+      for (const id in entry.log) {
+        const m = Math.max(...entry.log[id].filter(v => typeof v === 'number'), 0);
+        if (m > (DB.best[id] || 0)) DB.best[id] = m;
+      }
+    }
+
+    // treino abandonado há mais de 6 h: salva o que foi feito em vez de perder
+    function rescue() {
+      const s0 = DB.session;
+      if (!s0) return false;
+      if (s0.ended) { DB.session = null; save(); return false; }
+      const last = s0.last || s0.start;
+      if (Date.now() - last < 6 * 3600e3) return false;
+      const day = DAYS.find(d => d.id === s0.day);
+      let saved = false;
+      if (day) {
+        const steps = buildSteps(day);
+        const sets = steps.reduce((a, st, i) => a + (st.kind === 'sets' ? Math.min((s0.done || {})[i] || 0, st.e.s) : 0), 0);
+        if (sets > 0) {
+          const dur = Math.max(60, Math.min(3 * 3600, Math.round((last - s0.start - (s0.pausedMs || 0)) / 1000)));
+          upsertHistory({ id: s0.start, t: last, day: s0.day, dur, sets, log: s0.log || {}, partial: true });
+          saved = true;
+        }
+      }
+      DB.session = null;
+      save();
+      if (saved) setTimeout(() => toast('Seu último treino foi salvo automaticamente ✓'), 900);
+      return saved;
     }
 
     /* ---------- relógio ---------- */
@@ -888,12 +1108,17 @@
     }
     function togglePause() {
       if (!S) return;
+      const now = Date.now();
       if (S.pausedAt) {
-        S.pausedMs += Date.now() - S.pausedAt; S.pausedAt = null;
+        S.pausedMs += now - S.pausedAt; S.pausedAt = null;
         restCd.resume(); timedCd.resume(); player.play();
+        if (S.rest && S.rest.left != null) { S.rest.end = now + S.rest.left * 1000; delete S.rest.left; }
+        if (S.timed && S.timed.left != null) { S.timed.end = now + S.timed.left * 1000; delete S.timed.left; }
       } else {
-        S.pausedAt = Date.now();
+        S.pausedAt = now;
         restCd.pause(); timedCd.pause(); player.pause();
+        if (S.rest) S.rest.left = restCd.remaining();
+        if (S.timed) S.timed.left = timedCd.remaining();
       }
       persist(); syncPauseUI(); tickClock(); buzz(10);
     }
@@ -982,7 +1207,7 @@
     /* ---------- ações ---------- */
     function go(i) {
       i = Math.max(0, Math.min(S.steps.length - 1, i));
-      timedCd.stop(); S.timedOn = false; S.seg = 0;
+      timedCd.stop(); S.timedOn = false; S.seg = 0; S.timed = null;
       hideRest();
       S.i = i;
       persist();
@@ -992,8 +1217,12 @@
     function completeSet() {
       const st = S.steps[S.i];
       S.done[S.i] = (S.done[S.i] || 0) + 1;
-      S.timedOn = false;
+      S.timedOn = false; S.timed = null;
       timedCd.stop();
+      if (!st.e.tempo && st.e.peso !== false) {
+        const w = DB.weights[st.id];
+        (S.log[st.id] = S.log[st.id] || []).push(typeof w === 'number' ? w : null);
+      }
       Sound.go(); buzz(40);
       const d = S.done[S.i], e = st.e;
       if (d >= e.s) {
@@ -1014,8 +1243,9 @@
       const st = S.steps[S.i];
       S.timedOn = true;
       Sound.go();
-      if (st.kind === 'sets') timedCd.start(st.e.tempo);
-      else { S.seg = 0; timedCd.start(st.segs[0].s); }
+      if (st.kind === 'sets') { timedCd.start(st.e.tempo); S.timed = { end: Date.now() + st.e.tempo * 1000 }; }
+      else { S.seg = 0; timedCd.start(st.segs[0].s); S.timed = { seg: 0, end: Date.now() + st.segs[0].s * 1000 }; }
+      persist();
       render();
     }
 
@@ -1027,10 +1257,12 @@
         const seg = st.segs[S.seg];
         if (seg.hi) { Sound.go(); buzz([80, 60, 80]); } else { Sound.done(); buzz(120); }
         timedCd.start(seg.s);
+        S.timed = { seg: S.seg, end: Date.now() + seg.s * 1000 };
+        persist();
         render();
       } else {
         Sound.done(); buzz([200, 100, 300]);
-        S.timedOn = false;
+        S.timedOn = false; S.timed = null;
         S.done[S.i] = 1;
         persist();
         if (S.i === S.steps.length - 1) { render(); finish(); } else { toast('Etapa concluída!'); go(S.i + 1); }
@@ -1049,23 +1281,26 @@
       } else {
         if (stepDone(S.i)) { if (S.i === S.steps.length - 1) finish(); else go(S.i + 1); return; }
         if (S.timedOn) {
-          timedCd.stop(); S.timedOn = false; S.done[S.i] = 1; persist();
+          timedCd.stop(); S.timedOn = false; S.timed = null; S.done[S.i] = 1; persist();
           if (S.i === S.steps.length - 1) { render(); finish(); } else go(S.i + 1);
         } else startTimed();
       }
     }
 
-    function showRest(sec, nextHtml) {
+    function showRest(sec, nextHtml, total) {
       $('#rest-next').innerHTML = 'A seguir: ' + nextHtml;
       $('#rest').classList.add('on');
       $('#rest').setAttribute('aria-hidden', 'false');
-      restCd.start(sec);
-      if (S.pausedAt) restCd.pause();
+      restCd.start(sec, total);
+      S.rest = { end: Date.now() + sec * 1000, total: total || sec, next: nextHtml };
+      if (S.pausedAt) { restCd.pause(); S.rest.left = sec; }
+      persist();
     }
     function hideRest() {
       restCd.stop();
       $('#rest').classList.remove('on');
       $('#rest').setAttribute('aria-hidden', 'true');
+      if (S && S.rest) { S.rest = null; persist(); }
     }
 
     function finish() {
@@ -1077,20 +1312,22 @@
       $('#sum-title').textContent = exDone === nEx ? 'Treino concluído!' : 'Bom trabalho!';
       $('#sum-sub').textContent = `${S.dayObj.titulo} · ${S.dayObj.nome}`;
       S.final = { dur: Math.round(elapsed()), sets };
-      if (!S.pausedAt) { S.pausedAt = Date.now(); persist(); }
+      if (!S.pausedAt) S.pausedAt = Date.now();
+      upsertHistory(entryFromS());
+      S.ended = true;
+      persist();
+      $('#sum-back').hidden = exDone === nEx;
       $('#summary').classList.add('on');
+      Store.persist();
       Sound.done(); buzz([100, 60, 100, 60, 200]);
     }
 
     function close(record) {
-      if (record) {
-        DB.history.push({ t: Date.now(), day: S.day, dur: S.final.dur, sets: S.final.sets });
-        DB.history = DB.history.slice(-300);
-      }
+      timedCd.stop(); hideRest();
+      if (!record) DB.history = DB.history.filter(h => h.id !== S.start);
       DB.session = null;
       save();
       $('#summary').classList.remove('on');
-      timedCd.stop(); hideRest();
       S = null;
       minimize(false);
       toast(record ? 'Treino salvo na sua semana ✓' : 'Treino descartado');
@@ -1112,7 +1349,15 @@
         inp.value = v; DB.weights[S.steps[S.i].id] = v; save(); buzz(6);
       } else if (b.parentElement && b.parentElement.id === 'ses-prog') go(+b.dataset.i);
       else if (b.dataset.rest === 'skip') { hideRest(); Sound.go(); }
-      else if (b.dataset.rest) restCd.add(+b.dataset.rest);
+      else if (b.dataset.rest) {
+        restCd.add(+b.dataset.rest);
+        if (S.rest) { S.rest.total = restCd.total; if (S.rest.left != null) S.rest.left = restCd.remaining(); else S.rest.end = Date.now() + restCd.remaining() * 1000; persist(); }
+      }
+      else if (b.id === 'sum-back') {
+        S.ended = false; $('#summary').classList.remove('on');
+        if (S.pausedAt) togglePause();
+        persist(); render();
+      }
       else if (b.id === 'sum-save') close(true);
       else if (b.id === 'sum-discard') { if (confirm('Descartar este treino? Ele não será contado na semana.')) close(false); }
     });
@@ -1121,7 +1366,7 @@
     });
     $('#rest-ring').innerHTML = ringSVG(60, 9) + '<b class="tnum" id="rest-time">0:00</b>';
 
-    return { open, minimize, isOpen: () => root.classList.contains('on') };
+    return { open, minimize, rescue, isOpen: () => root.classList.contains('on') };
   })();
 
   /* =================================================================
@@ -1169,6 +1414,8 @@
     Progress.render();
     Nav.all().forEach(s => { if (s.onShow) s.onShow(); });
     Mini.update();
+    const tb = $('#tabbar [data-tab="progresso"]');
+    tb.classList.toggle('badge', backupStale());
   }
 
   /* ---------------- início ---------------- */
@@ -1177,8 +1424,17 @@
   Nav.setRoot('exercicios', Library);
   Nav.setRoot('progresso', Progress);
   Progress.onShow = () => Progress.render();
+  Session.rescue();
   Today.render(); Plan.render(); Library.render(); Progress.render();
   Mini.update();
+  $('#tabbar [data-tab="progresso"]').classList.toggle('badge', backupStale());
+
+  // segunda cópia (IndexedDB): se o localStorage tiver sido apagado, recupera daqui
+  Store.init(DB).then(rec => {
+    if (rec) { DB = normalizeDB(rec); Session.rescue(); save(); refreshAll(); toast('Seus dados foram recuperados ✓'); }
+  });
+  Store.persist().then(() => { if (Nav.current() === 'progresso') Progress.render(); });
+  document.addEventListener('pointerdown', function once() { Store.persist(); document.removeEventListener('pointerdown', once); });
 
   // dia virou enquanto o app estava aberto
   let lastDay = todayIdx();
@@ -1195,5 +1451,5 @@
     if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
   }
 
-  window.__app = { Nav, Session, Dock, DB, refreshAll };
+  window.__app = { Nav, Session, Dock, refreshAll, db: () => DB };
 })();

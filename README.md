@@ -38,7 +38,22 @@ O app precisa estar publicado em um endereço `https://`. O jeito mais simples �
 > Repositórios privados só podem usar o GitHub Pages em planos pagos. Se preferir, abra o `index.html`
 > direto no navegador — tudo funciona, só não fica instalável.
 
-O histórico e as cargas ficam salvos no próprio aparelho.
+## Seus dados ficam sempre salvos
+
+- **Salvamento automático a cada série**, inclusive do treino em andamento: pode fechar o app no meio do
+  treino — ao voltar, ele continua na mesma série, com o descanso e o timer da prancha/cardio no ponto certo.
+- **Duas cópias no aparelho** (localStorage + IndexedDB) e uma cópia automática por dia (últimos 7 dias):
+  se uma for apagada, o app recupera da outra. O app também pede ao navegador para proteger os dados contra limpeza.
+- **Treino nunca se perde:** ao encerrar, ele já é gravado no histórico; um treino esquecido aberto
+  por mais de 6 horas é salvo sozinho com o que foi feito.
+- **Carga de cada série** e **recorde** por exercício (aparecem no exercício e em Progresso).
+- **Backup em arquivo** (Progresso → Seus dados): gera um `.json` para guardar no Drive, iCloud ou WhatsApp,
+  e **Restaurar backup** traz tudo de volta — útil para trocar de celular ou se o navegador for limpo.
+  O app lembra de fazer backup quando há treinos novos há mais de 7 dias.
+- **Desfazer** ao apagar os dados.
+
+> Os dados ficam no navegador/endereço em que você usa o app. Se trocar de celular ou passar a abrir por
+> outro endereço, use o backup para levar tudo junto.
 
 ## A rotina
 
@@ -68,7 +83,7 @@ src/styles.css        visual
 src/index.html        casca do app
 src/icon.svg          ícone
 build.mjs             junta tudo em index.html (`node build.mjs`; `--icons` regera os ícones)
-tools/                pré-visualização das animações e testes automatizados
+tools/                pré-visualização das animações e testes (e2e.js, persist-test.js)
 ```
 
 > Plano de referência. Ajuste as cargas para terminar cada série com 1–2 repetições sobrando, pare se sentir dor

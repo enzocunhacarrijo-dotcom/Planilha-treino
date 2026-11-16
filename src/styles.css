@@ -204,6 +204,16 @@ button.row:active, .row.tap:active { background: #E6E9EF; }
 .segs i { flex: var(--w); border-radius: 3px; background: rgba(11, 27, 58, .12); height: 40%; }
 .segs i.hi { background: var(--blue); height: 100%; box-shadow: 0 0 8px rgba(90, 200, 250, .6); }
 
+/* aviso de backup */
+.banner { display: flex; align-items: center; gap: 12px; width: calc(100% - 32px); margin: 4px 16px 14px; padding: 12px 14px; border-radius: 18px; text-align: left; background: rgba(90, 200, 250, .16); box-shadow: inset 0 0 0 1px rgba(90, 200, 250, .45); transition: transform .12s var(--ease); }
+.banner:active { transform: scale(.98); }
+.banner .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--navy); color: var(--blue); flex: none; }
+.banner .ic svg { width: 19px; height: 19px; }
+.banner .tx { flex: 1; min-width: 0; }
+.banner b { display: block; font-size: 16px; color: var(--navy); }
+.banner span { display: block; font-size: 13.5px; color: var(--gray-2); margin-top: 1px; }
+.banner .chev { width: 17px; height: 17px; color: var(--navy-3); flex: none; }
+
 /* ---------------- anel de progresso ---------------- */
 .ring-card { margin: 4px 16px 0; padding: 18px; border-radius: 26px; color: #fff; display: flex; align-items: center; gap: 18px; background: radial-gradient(120% 140% at 100% 0%, #1D4382 0%, #0E2149 45%, #05070C 100%); box-shadow: 0 16px 40px rgba(11, 27, 58, .2); }
 .ring { width: 112px; height: 112px; flex: none; position: relative; }
@@ -318,11 +328,12 @@ button.row:active, .row.tap:active { background: #E6E9EF; }
   background: rgba(249, 250, 252, .86); -webkit-backdrop-filter: saturate(180%) blur(22px); backdrop-filter: saturate(180%) blur(22px);
   box-shadow: 0 -.5px 0 var(--sep);
 }
-.tabbar button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #959DAE; font-size: 10.5px; font-weight: 650; letter-spacing: .01em; transition: color .2s; }
+.tabbar button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #959DAE; font-size: 10.5px; font-weight: 650; letter-spacing: .01em; transition: color .2s; }
 .tabbar svg { width: 27px; height: 27px; transition: transform .25s var(--sheet); }
 .tabbar svg .a { transition: stroke .2s, fill .2s; }
 .tabbar button:active svg { transform: scale(.86); }
 .tabbar button[aria-selected="true"] { color: var(--navy); }
+.tabbar button.badge::after { content: ""; position: absolute; top: 7px; left: calc(50% + 9px); width: 9px; height: 9px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 2px rgba(249, 250, 252, .95), 0 0 8px rgba(90, 200, 250, .8); }
 .tabbar button[aria-selected="true"] svg .a { stroke: var(--blue-ink); }
 .tabbar button[aria-selected="true"] svg .af { fill: var(--blue); }
 
@@ -462,6 +473,10 @@ button.row:active, .row.tap:active { background: #E6E9EF; }
 .sum-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 24px 0; }
 .sum-stats div { background: rgba(255, 255, 255, .06); border-radius: 18px; padding: 14px 6px; }
 .sum-stats b { display: block; font-size: 22px; letter-spacing: -0.03em; }
+.sum-saved { display: flex; align-items: center; justify-content: center; gap: 8px; margin: -8px 0 18px; color: var(--blue-2); font-size: 14.5px; font-weight: 650; }
+.sum-saved svg { width: 16px; height: 16px; color: var(--blue); }
+.link-btn { margin-top: 14px; padding: 8px 12px; color: rgba(255, 255, 255, .6); font-size: 15px; font-weight: 600; }
+.link-btn:active { opacity: .5; }
 .sum-stats span { font-size: 11px; color: rgba(255, 255, 255, .6); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 
 /* ---------------- aviso + abertura ---------------- */
@@ -470,6 +485,7 @@ button.row:active, .row.tap:active { background: #E6E9EF; }
   background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14.5px; font-weight: 600; text-align: center;
   box-shadow: 0 10px 30px rgba(11, 27, 58, .3); visibility: hidden; transition: transform .45s var(--sheet), visibility 0s .45s;
 }
+.toast-act { margin-left: 10px; color: var(--blue); font-weight: 750; font-size: 14.5px; }
 .toast.on { transform: translate(-50%, 0); visibility: visible; transition: transform .45s var(--sheet), visibility 0s; }
 .launch { position: absolute; inset: 0; z-index: 100; display: grid; place-items: center; background: radial-gradient(110% 80% at 50% 30%, #1B3A73 0%, #0B1B3A 45%, #05070C 100%); transition: opacity .5s var(--ease), visibility 0s .5s; }
 .launch.out { opacity: 0; visibility: hidden; }

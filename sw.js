@@ -1,5 +1,5 @@
 // Service worker: deixa o app funcionando offline depois da primeira abertura.
-const CACHE = 'treino6x-v2';
+const CACHE = 'treino6x-v3';
 const ASSETS = [
   './',
   './index.html',
